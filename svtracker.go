@@ -9,86 +9,86 @@ import (
 )
 
 type SvTracker struct {
-	ExitCode	int
-	Term        chan struct{}
-	init		bool
-	initCh		chan struct{}
-	initMu		*sync.Mutex
-	wg			*sync.WaitGroup
-	wgSize		int64
+	ExitCode int
+	Term     chan struct{}
+	init     bool
+	initCh   chan struct{}
+	initMu   *sync.Mutex
+	wg       *sync.WaitGroup
+	wgSize   int64
 }
 
 func New() *SvTracker {
 	st := &SvTracker{
-		ExitCode:	0,
-		Term:		make(chan struct{}, 1),
-		init:		false,
-		initCh:		make(chan struct{}, 1),
-		initMu:		&sync.Mutex{},
-		wg: 		&sync.WaitGroup{},
-		wgSize:		int64(0),
+		ExitCode: 0,
+		Term:     make(chan struct{}, 1),
+		init:     false,
+		initCh:   make(chan struct{}, 1),
+		initMu:   &sync.Mutex{},
+		wg:       &sync.WaitGroup{},
+		wgSize:   int64(0),
 	}
 	return st
 }
 
-func (st *SvTracker) Add(){
+func (st *SvTracker) Add() {
 	atomic.AddInt64(&st.wgSize, 1)
 	st.wg.Add(1)
-	if (!st.init){
+	if !st.init {
 		st.initMu.Lock()
-		if (!st.init){
-			st.initCh <-struct{}{}
+		if !st.init {
+			st.initCh <- struct{}{}
 			st.init = true
 		}
 		st.initMu.Unlock()
 	}
 }
 
-func (st *SvTracker) Done(){
+func (st *SvTracker) Done() {
 	atomic.AddInt64(&st.wgSize, -1)
 	st.wg.Done()
 }
 
-func (st *SvTracker) Wait(){
-	<- st.initCh
+func (st *SvTracker) Wait() {
+	<-st.initCh
 	st.wg.Wait()
 }
 
-func (st *SvTracker) Complete(){
-	LOOP:
+func (st *SvTracker) Complete() {
+LOOP:
 	for {
-		select{
-		case <- st.Term:
-			if (st.wgSize > 0){
-				st.Term <-struct{}{}
+		select {
+		case <-st.Term:
+			if st.wgSize > 0 {
+				st.Term <- struct{}{}
 			} else {
 				break LOOP
 			}
 		default:
-			st.Term <-struct{}{}
+			st.Term <- struct{}{}
 		}
 	}
 }
 
-func (st *SvTracker) HandleSignals(){
+func (st *SvTracker) HandleSignals() {
 	kill := make(chan os.Signal, 2)
 	signal.Notify(kill, os.Interrupt, syscall.SIGTERM)
-	go func(){
-		select{
-		case <- st.Term:
+	go func() {
+		select {
+		case <-st.Term:
 			break
-		case <- kill:
+		case <-kill:
 			st.ExitCode = 2
 			st.Complete()
 		}
 	}()
 }
 
-func (st *SvTracker) Exit(){
+func (st *SvTracker) Exit() {
 	os.Exit(st.ExitCode)
 }
 
-func (st *SvTracker) WaitAndExit(){
+func (st *SvTracker) WaitAndExit() {
 	st.Wait()
 	st.Exit()
 }
