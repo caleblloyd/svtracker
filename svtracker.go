@@ -60,6 +60,10 @@ func (st *SvTracker) Complete() {
 	}
 }
 
+func (st *SvTracker) Size() int64{
+	return atomic.LoadInt64(&st.wgSize)
+}
+
 func (st *SvTracker) HandleSignals() {
 	kill := make(chan os.Signal, 2)
 	signal.Notify(kill, os.Interrupt, syscall.SIGTERM)
