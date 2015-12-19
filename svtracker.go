@@ -21,12 +21,12 @@ type SvTracker struct {
 func New() *SvTracker {
 	st := &SvTracker{
 		ExitCode: 0,
-		Term:     make(chan struct{}, 1),
+		Term:     make(chan struct{}),
 		init:     false,
 		initCh:   make(chan struct{}, 1),
 		initMu:   &sync.Mutex{},
 		wg:       &sync.WaitGroup{},
-		wgSize:   int64(0),
+		wgSize:   0,
 	}
 	return st
 }
@@ -55,18 +55,8 @@ func (st *SvTracker) Wait() {
 }
 
 func (st *SvTracker) Complete() {
-LOOP:
-	for {
-		select {
-		case <-st.Term:
-			if st.wgSize > 0 {
-				st.Term <- struct{}{}
-			} else {
-				break LOOP
-			}
-		default:
-			st.Term <- struct{}{}
-		}
+	for true{
+		st.Term <- struct{}{}
 	}
 }
 
