@@ -50,17 +50,41 @@ func (st *SvTracker) Done() {
 }
 
 func (st *SvTracker) Wait() {
-	<-st.initCh
+	select {
+	case <-st.initCh:
+		break
+	case <-st.Term:
+		st.Exit()
+	}
 	st.wg.Wait()
+	select {
+	case <-st.Term:
+		st.Exit()
+	default:
+		break
+	}
+}
+
+func (st *SvTracker) ShouldTerm() bool {
+	select {
+	case <-st.Term:
+		return true
+	default:
+		return false
+	}
 }
 
 func (st *SvTracker) Complete() {
-	for true{
+	for true {
 		st.Term <- struct{}{}
 	}
 }
 
-func (st *SvTracker) Size() int64{
+func (st *SvTracker) Reset() {
+	st.init = false;
+}
+
+func (st *SvTracker) Size() int64 {
 	return atomic.LoadInt64(&st.wgSize)
 }
 
@@ -80,6 +104,11 @@ func (st *SvTracker) HandleSignals() {
 
 func (st *SvTracker) Exit() {
 	os.Exit(st.ExitCode)
+}
+
+func (st *SvTracker) WaitAndReset() {
+	st.Wait()
+	st.Reset()
 }
 
 func (st *SvTracker) WaitAndExit() {
