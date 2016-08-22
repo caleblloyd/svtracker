@@ -6,16 +6,18 @@ import (
 	"sync"
 	"sync/atomic"
 	"syscall"
+	"time"
 )
 
 type SvTracker struct {
-	ExitCode int
-	Term     chan struct{}
-	init     bool
-	initCh   chan struct{}
-	initMu   *sync.Mutex
-	wg       *sync.WaitGroup
-	wgSize   int64
+	ExitCode     int
+	Term         chan struct{}
+	InitDuration time.Duration
+	init         bool
+	initCh       chan struct{}
+	initMu       *sync.Mutex
+	wg           *sync.WaitGroup
+	wgSize       int64
 }
 
 func New() *SvTracker {
@@ -52,7 +54,9 @@ func (st *SvTracker) Done() {
 func (st *SvTracker) Wait() {
 	select {
 	case <-st.initCh:
-		break
+		if st.InitDuration > 0 {
+			time.Sleep(st.InitDuration)
+		}
 	case <-st.Term:
 		st.Exit()
 	}
