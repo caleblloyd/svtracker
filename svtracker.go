@@ -23,7 +23,7 @@ type SvTracker struct {
 func New() *SvTracker {
 	st := &SvTracker{
 		ExitCode: 0,
-		Term:     make(chan struct{}),
+		Term:     make(chan struct{}, 16),
 		init:     false,
 		initCh:   make(chan struct{}, 1),
 		initMu:   &sync.Mutex{},
